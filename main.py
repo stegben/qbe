@@ -1,3 +1,4 @@
+import os
 from collections import namedtuple
 from pathlib import Path
 
@@ -6,10 +7,11 @@ from tqdm import tqdm
 import torch
 import torchaudio as ta
 
+load_dotenv(verbose=True)
 
-LIBRI_SPEECH_PATH = '/mnt/data/datasets/LibriSpeech/LibriSpeech'
-LIBRI_TTS_PATH = '/mnt/data/datasets/LibriTTS/LibriTTS'
-LIBRI_ALIGNED_PATH = '/mnt/data/datasets/LibriAligned/LibriSpeech'
+
+LIBRI_SPEECH_PATH = os.environ.get('QBE_LIBRISPEECH_PATH')
+LIBRI_ALIGNED_PATH = os.environ.get('QBE_LIBRIALIGNED_PATH')
 
 Alignment = namedtuple('Alignment', ['words', 'secs'])
 
