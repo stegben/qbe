@@ -86,6 +86,18 @@ version = "0.3.4"
 numpy = "*"
 
 [[package]]
+category = "main"
+description = "hnswlib"
+name = "hnswlib"
+optional = false
+python-versions = "*"
+version = "0.3.4"
+
+[package.dependencies]
+numpy = "*"
+pybind11 = ">=2.0"
+
+[[package]]
 category = "dev"
 description = "Read metadata from Python packages"
 marker = "python_version < \"3.8\""
@@ -350,6 +362,14 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 version = "1.8.1"
 
 [[package]]
+category = "main"
+description = "Seamless operability between C++11 and Python"
+name = "pybind11"
+optional = false
+python-versions = "*"
+version = "2.5.0"
+
+[[package]]
 category = "dev"
 description = "Pygments is a syntax highlighting package written in Python."
 marker = "python_version >= \"3.4\""
@@ -540,7 +560,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "2d20441d5139041cc98bf39cc95a510f8340dc6a710fc3f7a09b4f0553a634b2"
+content-hash = "6bec6c1719338c398b5f494f9df26e71918379341417f934266b360fbf2e1a58"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -575,6 +595,9 @@ decorator = [
 fastdtw = [
     {file = "fastdtw-0.3.4-cp37-cp37m-macosx_10_14_x86_64.whl", hash = "sha256:28918c163dce9e736e09252a02073fce712bc4c7aa18f2a45d882cca84da2dbb"},
     {file = "fastdtw-0.3.4.tar.gz", hash = "sha256:2350fa6ec36bcad186eaf81f46eff35181baf04e324f522de8aeb43d0243f64f"},
+]
+hnswlib = [
+    {file = "hnswlib-0.3.4.tar.gz", hash = "sha256:3ceebe78d22765c0e928ac1e304d73cb8d2aa30aede2463eda902f3847fe39dd"},
 ]
 importlib-metadata = [
     {file = "importlib_metadata-1.5.0-py2.py3-none-any.whl", hash = "sha256:b97607a1a18a5100839aec1dc26a1ea17ee0d93b20b0f008d80a5a050afb200b"},
@@ -707,6 +730,10 @@ ptyprocess = [
 py = [
     {file = "py-1.8.1-py2.py3-none-any.whl", hash = "sha256:c20fdd83a5dbc0af9efd622bee9a5564e278f6380fffcacc43ba6f43db2813b0"},
     {file = "py-1.8.1.tar.gz", hash = "sha256:5e27081401262157467ad6e7f851b7aa402c5852dbcb3dae06768434de5752aa"},
+]
+pybind11 = [
+    {file = "pybind11-2.5.0-py2.py3-none-any.whl", hash = "sha256:205d9f9615eac190811cb8c3c2b2f95f6844ddba0fa0a1d45d00793338741601"},
+    {file = "pybind11-2.5.0.tar.gz", hash = "sha256:ea5a4e7a880112915463826f1acbec5892df36dfe102ecb249229ac514fb54ad"},
 ]
 pygments = [
     {file = "Pygments-2.6.1-py3-none-any.whl", hash = "sha256:ff7a40b4860b727ab48fad6360eb351cc1b33cbf9b15a0f689ca5353e9463324"},

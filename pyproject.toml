@@ -13,6 +13,7 @@ numpy = "^1.18.1"
 fastdtw = "^0.3.4"
 segdtw = "^0.1.0"
 nptyping = "^1.0.1"
+hnswlib = "^0.3.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.3.5"
