@@ -16,8 +16,12 @@ load_dotenv(verbose=True)
 LIBRI_SPEECH_PATH = os.environ.get('QBE_LIBRISPEECH_PATH')
 LIBRI_ALIGNED_PATH = os.environ.get('QBE_LIBRIALIGNED_PATH')
 
-Alignment = namedtuple('Alignment', ['words', 'secs'])
+HOUGH_PEAKS = 100
+FRAME_K = 100
+OFFSET_MERGE_THRESHOLD = 10
 
+Alignment = namedtuple('Alignment', ['words', 'secs'])
+Position = namedtuple('Position', ['file_name', 'start_sec', 'end_sec'])
 
 class RangeLookup:
 
@@ -52,11 +56,32 @@ class HoughAccumulations:
         candidates = self.counts.most_common(k)
         result = []
         for key, count in candidates:
-            result.append((count, self.key2labels[key]))
+            result.append((key, count, self.key2labels[key]))
         return result
 
     def hash(self, x, y):
         return (int(x), int(y))
+
+
+def extract_voice(path, start_sec, end_sec):
+    voice, sr = ta.load(path)
+    start = int(sr * start_sec)
+    end = int(sr * end_sec)
+    return voice[0, start:end]
+
+
+class VoiceLibrary:
+
+    def __init__(self, audio_loader, data_provider):
+        self.audio_loader = audio_loader
+        self.data_provider = data_provider
+        self.loaded = False
+
+    def extract(self, name, start, end):
+        pass
+
+    def frame_id_to_filename_second(self, frame_id):
+        pass
 
 
 if __name__ == "__main__":
@@ -92,6 +117,30 @@ if __name__ == "__main__":
         file2mfcc[file_name] = frame_features
         n_frames = frame_features.shape[0]
         total_frames += n_frames
+
+    libri_aligned_folder = Path(LIBRI_ALIGNED_PATH)
+    all_aligned_texts_path = list(libri_aligned_folder.glob('train-clean-100/*/*/*.txt'))
+    file2alignment = {}
+    word2position = defaultdict(list)
+    for aligned_texts_path in all_aligned_texts_path:
+        with aligned_texts_path.open('r') as f:
+            for line in f:
+                raw = line.rstrip().split()
+                voice_file_name = raw[0]
+                if voice_file_name not in file2mfcc:
+                    continue
+                words = raw[1].replace('"', '').split(',')
+                secs = raw[2].replace('"', '').split(',')
+                secs = [float(s) for s in secs]
+                assert len(secs) == len(words)
+                file2alignment[voice_file_name] = Alignment(words=words, secs=secs)
+                start_sec = 0.
+                for word, end_sec in zip(words, secs):
+                    word2position[word].append(Position(file_name=voice_file_name, start_sec=start_sec, end_sec=end_sec))
+                    start_sec = end_sec
+
+    word_counts = {k: len(v) for k, v in word2position.items()}
+
     index2file = RangeLookup()
     index = Index(space='l2', dim=39)
     index.init_index(max_elements=total_frames, ef_construction=200, M=16)
@@ -110,39 +159,38 @@ if __name__ == "__main__":
     query_features = mfcc(query_voice)[0]
     query_features.transpose_(0, 1)
     query_features = query_features.numpy()
-    m_frames = query_features.shape[0]
-    knn_points = []
-    for m_idx in range(m_frames):
-        frame = query_features[m_idx, :]
-        nearest_frames, _distances = index.knn_query(frame, k=100)
-        knn_points.append(nearest_frames[0])
+    knn_points, _distances = index.knn_query(query_features, k=FRAME_K)
 
     # Hough transform
     accumulations = HoughAccumulations()
-    for m_idx, n_idxs in enumerate(knn_points):
+    for m_idx, n_idxs in enumerate(list(knn_points)):
         # slope constraint
         slope_candidates = [1]
         for slope in slope_candidates:
             for n_idx in list(n_idxs):
                 offset = slope * -m_idx + n_idx
                 accumulations.add(slope, offset, n_idx)
+
+    candidates = accumulations.peaks(HOUGH_PEAKS)
+
+    # merge too-similar pairs
+    merged = set()
+    result = []
+    for idx, ((_, offset), count, points) in enumerate(candidates):
+        if idx in merged:
+            continue
+        cur_left = min(points)
+        cur_right = max(points)
+        cur_count = count
+        for idx2 in range(idx + 1, HOUGH_PEAKS):
+            if idx2 in merged:
+                continue
+            (_, offset_2), count_2, points_2 = candidates[idx2]
+            if (offset - offset_2) < OFFSET_MERGE_THRESHOLD:
+                cur_count += count_2
+                cur_left = min(cur_left, min(points_2))
+                cur_right = max(cur_right, max(points_2))
+                merged.add(idx2)
+        result.append((cur_count, cur_left, cur_right))  # score, start_frame, end_frame
+
     import ipdb; ipdb.set_trace()
-
-    # libri_aligned_folder = Path(LIBRI_ALIGNED_PATH)
-    # all_aligned_texts_path = list(libri_aligned_folder.glob('train-clean-100/*/*/*.txt'))
-
-    # file2alignment = {}
-    # for aligned_texts_path in all_aligned_texts_path:
-    #     with aligned_texts_path.open('r') as f:
-    #         for line in f:
-    #             raw = line.rstrip().split()
-    #             voice_file_name = raw[0]
-    #             if voice_file_name not in file2voice:
-    #                 continue
-    #             words = raw[1].replace('"', '').split(',')
-    #             secs = raw[2].replace('"', '').split(',')
-    #             secs = [float(s) for s in secs]
-    #             assert len(secs) == len(words)
-    #             file2alignment[voice_file_name] = Alignment(words=words, secs=secs)
-
-    # import ipdb; ipdb.set_trace()
