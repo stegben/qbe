@@ -4,8 +4,9 @@ import numpy as np
 from nptyping import NDArray
 
 
-VoiceIndex = int
+VoiceKey = int
+Score = float
 Second = float
 VoiceType = NDArray[(Any, Any), np.float32]
-CandidateType = Tuple[VoiceIndex, Second, Second]  # voice ID, start second, end second
+CandidateType = Tuple[Score, VoiceKey, Second, Second]  # score, voice key, start second, end second
 QueryResult = List[CandidateType]
