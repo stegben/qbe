@@ -1,3 +1,4 @@
+import abc
 import bisect
 import os
 from collections import namedtuple, Counter, defaultdict
@@ -88,13 +89,6 @@ if __name__ == "__main__":
 
     # import audio data
     # split data into query and candidates
-    n_files = 1000
-    libri_speech_folder = Path(LIBRI_SPEECH_PATH)
-    all_voice_path = list(libri_speech_folder.glob('train-clean-100/*/*/*.flac'))
-    all_voice_path = all_voice_path[:n_files]
-    file2voice = {}
-    file2mfcc = {}
-
     mfcc = ta.transforms.MFCC(
         sample_rate=16000,
         n_mfcc=39,
@@ -105,12 +99,20 @@ if __name__ == "__main__":
             n_mels=39,
         ),
     )
+    libri_speech_folder = Path(LIBRI_SPEECH_PATH)
+    libri_aligned_folder = Path(LIBRI_ALIGNED_PATH)
+
+    # load candidate data
+    n_files = 5000
+    all_voice_path = list(libri_speech_folder.glob('train-clean-100/*/*/*.flac'))
+    all_voice_path = all_voice_path[:n_files]
+    file2mfcc = {}
+
     total_frames = 0
     for voice_path in tqdm(all_voice_path):
         voice, sr = ta.load(voice_path)
         assert sr == 16000
-        file_name = str(voice_path).split('/')[-1]
-        file_name = file_name[:-5]  # remove '.flac' to match alignments
+        file_name = voice_path.stem
         # file2voice[file_name] = voice
         frame_features = mfcc(voice)[0]
         frame_features.transpose_(0, 1)
@@ -118,7 +120,6 @@ if __name__ == "__main__":
         n_frames = frame_features.shape[0]
         total_frames += n_frames
 
-    libri_aligned_folder = Path(LIBRI_ALIGNED_PATH)
     all_aligned_texts_path = list(libri_aligned_folder.glob('train-clean-100/*/*/*.txt'))
     file2alignment = {}
     word2position = defaultdict(list)
@@ -138,8 +139,43 @@ if __name__ == "__main__":
                 for word, end_sec in zip(words, secs):
                     word2position[word].append(Position(file_name=voice_file_name, start_sec=start_sec, end_sec=end_sec))
                     start_sec = end_sec
-
     word_counts = {k: len(v) for k, v in word2position.items()}
+
+    # Load Query Set
+    query_voice_path = list(libri_speech_folder.glob('test-clean/*/*/*.flac'))
+    query_voice_path = query_voice_path[:n_files]
+    query_file2mfcc = {}
+
+    for voice_path in tqdm(query_voice_path):
+        voice, sr = ta.load(voice_path)
+        assert sr == 16000
+        file_name = voice_path.stem
+        # file2voice[file_name] = voice
+        frame_features = mfcc(voice)[0]
+        frame_features.transpose_(0, 1)
+        query_file2mfcc[file_name] = frame_features
+        n_frames = frame_features.shape[0]
+
+    query_aligned_texts_path = list(libri_aligned_folder.glob('test-clean/*/*/*.txt'))
+    query_file2alignment = {}
+    query_word2position = defaultdict(list)
+    for aligned_texts_path in query_aligned_texts_path:
+        with aligned_texts_path.open('r') as f:
+            for line in f:
+                raw = line.rstrip().split()
+                voice_file_name = raw[0]
+                if voice_file_name not in query_file2mfcc:
+                    continue
+                words = raw[1].replace('"', '').split(',')
+                secs = raw[2].replace('"', '').split(',')
+                secs = [float(s) for s in secs]
+                assert len(secs) == len(words)
+                query_file2alignment[voice_file_name] = Alignment(words=words, secs=secs)
+                start_sec = 0.
+                for word, end_sec in zip(words, secs):
+                    query_word2position[word].append(Position(file_name=voice_file_name, start_sec=start_sec, end_sec=end_sec))
+                    start_sec = end_sec
+    query_word_counts = {k: len(v) for k, v in query_word2position.items()}
 
     index2file = RangeLookup()
     index = Index(space='l2', dim=39)
@@ -193,4 +229,45 @@ if __name__ == "__main__":
                 merged.add(idx2)
         result.append((cur_count, cur_left, cur_right))  # score, start_frame, end_frame
 
+    def index_query(path, start_sec, end_sec):
+        x, sr = ta.load(path)
+        x = x[:, (start_sec * sr):(end_sec * sr)]
+
+        # encoding
+        feature = mfcc(x)[0]
+        feature.transpose_(0, 1)
+        feature = feature.numpy()
+
+        # knn
+        knn_points, _distances = index.knn_query(feature, k=FRAME_K)
+
+        # detection
+        accumulations = HoughAccumulations()
+        for m_idx, n_idxs in enumerate(list(knn_points)):
+            # slope constraint
+            slope_candidates = [1]
+            for slope in slope_candidates:
+                for n_idx in list(n_idxs):
+                    offset = slope * -m_idx + n_idx
+                    accumulations.add(slope, offset, n_idx)
+        candidates = accumulations.peaks(HOUGH_PEAKS)
+        merged = set()
+        result = []
+        for idx, ((_, offset), count, points) in enumerate(candidates):
+            if idx in merged:
+                continue
+            cur_left = min(points)
+            cur_right = max(points)
+            cur_count = count
+            for idx2 in range(idx + 1, HOUGH_PEAKS):
+                if idx2 in merged:
+                    continue
+                (_, offset_2), count_2, points_2 = candidates[idx2]
+                if (offset - offset_2) < OFFSET_MERGE_THRESHOLD:
+                    cur_count += count_2
+                    cur_left = min(cur_left, min(points_2))
+                    cur_right = max(cur_right, max(points_2))
+                    merged.add(idx2)
+            result.append((cur_count, cur_left, cur_right))  # score, start_frame, end_frame
+        return result
     import ipdb; ipdb.set_trace()
