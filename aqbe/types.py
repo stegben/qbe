@@ -4,9 +4,10 @@ import numpy as np
 from nptyping import NDArray
 
 
-VoiceKey = int
+AudioKey = int
 Score = float
 Second = float
-VoiceType = NDArray[(Any, Any), np.float32]
-CandidateType = Tuple[Score, VoiceKey, Second, Second]  # score, voice key, start second, end second
+AudioFeatureType = NDArray[(Any, Any), np.float32]
+FrameIdxType = NDArray[(Any,), np.int64]
+CandidateType = Tuple[Score, AudioKey, Second, Second]  # score, Audio key, start second, end second
 QueryResult = List[CandidateType]

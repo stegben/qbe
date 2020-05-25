@@ -1,7 +1,7 @@
 import abc
 import bisect
 import os
-from collections import namedtuple, Counter, defaultdict
+from collections import namedtuple, Counter, defaultdict, OrderedDict
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -39,7 +39,11 @@ class RangeLookup:
 
     def __getitem__(self, position):
         idx = bisect.bisect_left(self.positions, position)
-        return self.labels[idx]
+        if idx >= 1:
+            start = self.positions[idx - 1]
+        else:
+            start = 0
+        return self.labels[idx], position - start
 
 
 class HoughAccumulations:
@@ -63,20 +67,41 @@ class HoughAccumulations:
     def hash(self, x, y):
         return (int(x), int(y))
 
+class AudioLoader:
 
-def extract_voice(path, start_sec, end_sec):
-    voice, sr = ta.load(path)
-    start = int(sr * start_sec)
-    end = int(sr * end_sec)
-    return voice[0, start:end]
+    def extract_voice(self, path, start_sec=0, end_sec=None, sampling_rate=None):
+        voice, sr = ta.load(path)
+        if sampling_rate is not None:
+            pass
+            # TODO: resample
+        start = int(sr * start_sec)
+        if end_sec is None:
+            return voice[0, start:]
+        end = int(sr * end_sec)
+        return voice[0, start:end]
 
+
+class DataProvider:
+
+    def __init__(self, audio_file_pattern, alignment_file_pattern):
+        self.
 
 class VoiceLibrary:
-
-    def __init__(self, audio_loader, data_provider):
+    """Provided encoded features of audio files, and provide inverse lookup
+    """
+    def __init__(self, audio_loader, data_provider, encoder):
         self.audio_loader = audio_loader
         self.data_provider = data_provider
-        self.loaded = False
+        self.encoder = encoder
+
+        self.key2feature = OrderedDict()
+        self.idx2key = RangeLookup()
+
+        self.load
+
+    @property
+    def n_frames(self):
+        pass
 
     def extract(self, name, start, end):
         pass
@@ -103,7 +128,7 @@ if __name__ == "__main__":
     libri_aligned_folder = Path(LIBRI_ALIGNED_PATH)
 
     # load candidate data
-    n_files = 5000
+    n_files = 1000
     all_voice_path = list(libri_speech_folder.glob('train-clean-100/*/*/*.flac'))
     all_voice_path = all_voice_path[:n_files]
     file2mfcc = {}
@@ -123,6 +148,7 @@ if __name__ == "__main__":
     all_aligned_texts_path = list(libri_aligned_folder.glob('train-clean-100/*/*/*.txt'))
     file2alignment = {}
     word2position = defaultdict(list)
+    position2word = RangeLookup()
     for aligned_texts_path in all_aligned_texts_path:
         with aligned_texts_path.open('r') as f:
             for line in f:
@@ -229,45 +255,4 @@ if __name__ == "__main__":
                 merged.add(idx2)
         result.append((cur_count, cur_left, cur_right))  # score, start_frame, end_frame
 
-    def index_query(path, start_sec, end_sec):
-        x, sr = ta.load(path)
-        x = x[:, (start_sec * sr):(end_sec * sr)]
-
-        # encoding
-        feature = mfcc(x)[0]
-        feature.transpose_(0, 1)
-        feature = feature.numpy()
-
-        # knn
-        knn_points, _distances = index.knn_query(feature, k=FRAME_K)
-
-        # detection
-        accumulations = HoughAccumulations()
-        for m_idx, n_idxs in enumerate(list(knn_points)):
-            # slope constraint
-            slope_candidates = [1]
-            for slope in slope_candidates:
-                for n_idx in list(n_idxs):
-                    offset = slope * -m_idx + n_idx
-                    accumulations.add(slope, offset, n_idx)
-        candidates = accumulations.peaks(HOUGH_PEAKS)
-        merged = set()
-        result = []
-        for idx, ((_, offset), count, points) in enumerate(candidates):
-            if idx in merged:
-                continue
-            cur_left = min(points)
-            cur_right = max(points)
-            cur_count = count
-            for idx2 in range(idx + 1, HOUGH_PEAKS):
-                if idx2 in merged:
-                    continue
-                (_, offset_2), count_2, points_2 = candidates[idx2]
-                if (offset - offset_2) < OFFSET_MERGE_THRESHOLD:
-                    cur_count += count_2
-                    cur_left = min(cur_left, min(points_2))
-                    cur_right = max(cur_right, max(points_2))
-                    merged.add(idx2)
-            result.append((cur_count, cur_left, cur_right))  # score, start_frame, end_frame
-        return result
     import ipdb; ipdb.set_trace()
