@@ -21,109 +21,14 @@ HOUGH_PEAKS = 100
 FRAME_K = 100
 OFFSET_MERGE_THRESHOLD = 10
 
-Alignment = namedtuple('Alignment', ['words', 'secs'])
-Position = namedtuple('Position', ['file_name', 'start_sec', 'end_sec'])
 
-class RangeLookup:
-
-    def __init__(self):
-        self.positions = []
-        self.labels = []
-
-    def add(self, position, label):
-        if self.positions:
-            if position < self.positions[-1]:
-                raise ValueError(f'Adding new element should be incremetal. Got {position}: {label}')
-        self.positions.append(position)
-        self.labels.append(label)
-
-    def __getitem__(self, position):
-        idx = bisect.bisect_left(self.positions, position)
-        if idx >= 1:
-            start = self.positions[idx - 1]
-        else:
-            start = 0
-        return self.labels[idx], position - start
-
-
-class HoughAccumulations:
-
-    def __init__(self):
-        self.counts = Counter()
-        self.key2labels = defaultdict(list)
-
-    def add(self, slope, offset, label):
-        key = self.hash(slope, offset)
-        self.counts.update([key])
-        self.key2labels[key].append(label)
-
-    def peaks(self, k):
-        candidates = self.counts.most_common(k)
-        result = []
-        for key, count in candidates:
-            result.append((key, count, self.key2labels[key]))
-        return result
-
-    def hash(self, x, y):
-        return (int(x), int(y))
-
-class AudioLoader:
-
-    def extract_voice(self, path, start_sec=0, end_sec=None, sampling_rate=None):
-        voice, sr = ta.load(path)
-        if sampling_rate is not None:
-            pass
-            # TODO: resample
-        start = int(sr * start_sec)
-        if end_sec is None:
-            return voice[0, start:]
-        end = int(sr * end_sec)
-        return voice[0, start:end]
-
-
-class DataProvider:
-
-    def __init__(self, audio_file_pattern, alignment_file_pattern):
-        self.
-
-class VoiceLibrary:
-    """Provided encoded features of audio files, and provide inverse lookup
-    """
-    def __init__(self, audio_loader, data_provider, encoder):
-        self.audio_loader = audio_loader
-        self.data_provider = data_provider
-        self.encoder = encoder
-
-        self.key2feature = OrderedDict()
-        self.idx2key = RangeLookup()
-
-        self.load
-
-    @property
-    def n_frames(self):
-        pass
-
-    def extract(self, name, start, end):
-        pass
-
-    def frame_id_to_filename_second(self, frame_id):
-        pass
 
 
 if __name__ == "__main__":
 
     # import audio data
     # split data into query and candidates
-    mfcc = ta.transforms.MFCC(
-        sample_rate=16000,
-        n_mfcc=39,
-        melkwargs=dict(
-            win_length=400,
-            n_fft=400,
-            hop_length=160,
-            n_mels=39,
-        ),
-    )
+
     libri_speech_folder = Path(LIBRI_SPEECH_PATH)
     libri_aligned_folder = Path(LIBRI_ALIGNED_PATH)
 
@@ -136,6 +41,7 @@ if __name__ == "__main__":
     total_frames = 0
     for voice_path in tqdm(all_voice_path):
         voice, sr = ta.load(voice_path)
+        import ipdb; ipdb.set_trace()
         assert sr == 16000
         file_name = voice_path.stem
         # file2voice[file_name] = voice
@@ -222,18 +128,6 @@ if __name__ == "__main__":
     query_features.transpose_(0, 1)
     query_features = query_features.numpy()
     knn_points, _distances = index.knn_query(query_features, k=FRAME_K)
-
-    # Hough transform
-    accumulations = HoughAccumulations()
-    for m_idx, n_idxs in enumerate(list(knn_points)):
-        # slope constraint
-        slope_candidates = [1]
-        for slope in slope_candidates:
-            for n_idx in list(n_idxs):
-                offset = slope * -m_idx + n_idx
-                accumulations.add(slope, offset, n_idx)
-
-    candidates = accumulations.peaks(HOUGH_PEAKS)
 
     # merge too-similar pairs
     merged = set()
