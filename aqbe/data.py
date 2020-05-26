@@ -1,13 +1,13 @@
 import abc
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from pathlib import Path
 
 from .types import AlignmentType
 from .utils import RangeLookup
 
 
-Alignment = namedtuple('Alignment', ['words', 'secs'])
-Position = namedtuple('Position', ['file_name', 'start_sec', 'end_sec'])
+Alignment = namedtuple('Alignment', ['word', 'start_sec', 'end_sec'])
+Position = namedtuple('Position', ['key', 'start', 'end'])
 
 
 class LibriSpeechWithAlignment:
@@ -20,7 +20,7 @@ class LibriSpeechWithAlignment:
         self.all_aligned_texts_path = list(libri_aligned_folder.glob('train-clean-100/*/*/*.txt'))
 
         self.key2path = {}
-        self.key2alignments = {}
+        self.key2alignments = defaultdict(list)
 
         for aligned_texts_path in self.all_aligned_texts_path:
             with aligned_texts_path.open('r') as f:
@@ -31,19 +31,37 @@ class LibriSpeechWithAlignment:
                     secs = raw[2].replace('"', '').split(',')
                     secs = [float(s) for s in secs]
                     assert len(secs) == len(words)
-                    self.key2alignments[key] = Alignment(words=words, secs=secs)
+
+                    start_sec = 0
+                    for word, end_sec in zip(words, secs):
+                        self.key2alignments[key].append(Alignment(
+                            word=word,
+                            start_sec=start_sec,
+                            end_sec=end_sec,
+                        ))
+                        start_sec = end_sec
 
         for voice_path in self.all_voice_path:
             key = self.gen_key(voice_path)
             self.key2path[key] = voice_path
 
-        self.keys = set().union(self.key2path, self.key2alignments)
+        self._keys = sorted(list(set().union(self.key2path, self.key2alignments)))
+
+    @property
+    def keys(self):
+        return self._keys
 
     def gen_key(self, path):
         return path.stem
 
+    def get_audio_path(self, key):
+        return self.key2path[key]
 
-class VoiceLibrary:
+    def get_alignments(self, key):
+        return self.key2alignments[key]
+
+
+class Data:
     """Provided encoded features of audio files, and provide inverse lookup
     """
     def __init__(self, audio_loader, audio_provider, encoder):
@@ -51,27 +69,45 @@ class VoiceLibrary:
         self.audio_provider = audio_provider
         self.encoder = encoder
 
-        self.key2feature = OrderedDict()
         self.idx2key = RangeLookup()
+        self.idx2word = RangeLookup()
+        self.key2feature = {}
+        self.word2positions = defaultdict(list)
 
-        self.load = False
+        self.encoded_audio_features = []
+        self._n_frames = 0
+        for key in self.audio_provider.keys:
+            audio_path = self.audio_provider.get_audio_path(key)
+            audio = self.audio_loader.extract_audio(audio_path, start_sec=0, end_sec=None)
+            feature = self.encoder.encode(audio)
+            n_frame = feature.shape[0]
+            self._n_frames += n_frame
+            self.idx2key.add(self._n_frames, key)
+            self.key2feature[key] = feature
 
-        for word, end_sec in zip(words, secs):
-            word2position[word].append(Position(
-                file_name=voice_file_name,
-                start_sec=start_sec,
-                end_sec=end_sec,
-            ))
-            start_sec = end_sec
+            alignments = self.audio_provider.get_alignments(key)
+
+            for word, start_sec, end_sec in alignments:
+                start_frames = self.encoder.to_frames(start_sec)
+                end_frames = self.encoder.to_frames(end_sec)
+                self.word2positions[word].append(Position(
+                    key=key,
+                    start=start_frames,
+                    end=end_frames,
+                ))
+                start_sec = end_sec
 
     @property
     def n_frames(self):
-        pass
+        return self._n_frames
 
-    def extract(self, key, start, end):
+    def extract(self, key, start_sec, end_sec=None):
         path = self.audio_provider.get_path[key]
-        audio = self.audio_loader.extract_voice(path, start, end)
+        audio = self.audio_loader.extract_audio(path, start_sec=start_sec, end_sec=end_sec)
         return self.encoder.encode(audio)
 
-    def reverse_lookup(self, frame_id) -> :
-        return self.idx2key[frame_idx]
+    # def reverse_lookup(self, start_frame_idx, end_frame_idx):
+    #     key, n_frames = self.idx2key[start_frame_idx, end_frame_idx]
+    #     seconds = self.encoder.to_seconds(n_frames)
+    #     return key, seconds
+
