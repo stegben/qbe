@@ -3,29 +3,29 @@ from typing import Tuple, Any
 
 import torchaudio as ta
 
-from .types import LoadedVoiceType
+from .types import LoadedAudioType
 
 
 class AudioLoaderBase(abc.ABC):
 
     @abc.abstractmethod
-    def _load(self, path: str, sampling_rate: int = None) -> LoadedVoiceType:
+    def _load(self, path: str, sampling_rate: int = None) -> LoadedAudioType:
         pass
 
-    def extract_voice(
+    def extract_audio(
             self,
             path: str,
             start_sec: int = 0,
             end_sec: int = None,
             sampling_rate: int = None,
         ):
-        voice, sr = self._load(path, sampling_rate)
+        audio, sr = self._load(path, sampling_rate)
         start = int(sr * start_sec)
         if end_sec is None:
-            return voice[start:]
+            return audio[start:]
         else:
             end = int(sr * end_sec)
-            return voice[start:end]
+            return audio[start:end]
 
 
 class TorchAudio(AudioLoaderBase):

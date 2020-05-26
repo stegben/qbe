@@ -9,8 +9,8 @@ AudioKey = str
 Score = float
 Second = float
 
-VoiceType = NDArray[(Any,), np.float32]  # single channel, -1 ~ 1, length == sr * secs
-LoadedVoiceType = Tuple[VoiceType, int]  # Voice, sampleing rate
+AudioType = NDArray[(Any,), np.float32]  # single channel, -1 ~ 1, length == sr * secs
+LoadedAudioType = Tuple[AudioType, int]  # Audio, sampleing rate
 
 AudioFeatureType = NDArray[(Any, Any), np.float32]
 FrameIdxType = NDArray[(Any,), np.int64]
