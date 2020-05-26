@@ -59,6 +59,7 @@ class SimpleRails:
         self.index.add_items(feature, idxs)
 
     def query(self, feature: AudioFeatureType) -> IndexQueryResult:
+        self.index.set_ef(200)
         knn_points, _distances = self.index.knn_query(feature, k=self.n_nearest_frames)
 
         accumulations = HoughAccumulations()
