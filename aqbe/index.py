@@ -54,7 +54,7 @@ class SimpleRails:
 
     def add(self, feature: AudioFeatureType, idxs: FrameIdxType):
         assert len(idxs.shape) == 1  # 1-D
-        assert feature.shape[0] == idxs[0]  # same size
+        assert feature.shape[0] == idxs.shape[0]  # same size
         assert idxs.max() < self.total_frames
         self.index.add_items(feature, idxs)
 
