@@ -2,6 +2,8 @@ import abc
 from collections import namedtuple, defaultdict
 from pathlib import Path
 
+import numpy as np
+
 from .types import AlignmentType
 from .utils import RangeLookup
 
@@ -16,8 +18,10 @@ class LibriSpeechWithAlignment:
         libri_speech_folder = Path(audio_directory)
         libri_aligned_folder = Path(alignment_directory)
 
-        self.all_voice_path = list(libri_speech_folder.glob('train-clean-100/*/*/*.flac'))
-        self.all_aligned_texts_path = list(libri_aligned_folder.glob('train-clean-100/*/*/*.txt'))
+        self.all_voice_path = list(libri_speech_folder.glob('train-clean-100/*/*/*.flac')) \
+                            + list(libri_speech_folder.glob('train-clean-360/*/*/*.flac'))
+        self.all_aligned_texts_path = list(libri_aligned_folder.glob('train-clean-100/*/*/*.txt')) \
+                                    + list(libri_aligned_folder.glob('train-clean-360/*/*/*.txt'))
 
         self.key2path = {}
         self.key2alignments = defaultdict(list)
@@ -97,9 +101,22 @@ class Data:
                 ))
                 start_sec = end_sec
 
+    def generate(self, *_, **__):
+        start_idx = 0
+        for key in self.audio_provider.keys:
+            feature = self.key2feature[key]
+            n_frames = feature.shape[0]
+            idxs = np.arange(n_frames) + start_idx
+            yield feature, idxs
+            start_idx += n_frames
+
     @property
     def n_frames(self):
         return self._n_frames
+
+    @property
+    def feature_dims(self):
+        return self.encoder.dim
 
     def extract(self, key, start_sec, end_sec=None):
         path = self.audio_provider.get_path[key]
@@ -110,4 +127,3 @@ class Data:
     #     key, n_frames = self.idx2key[start_frame_idx, end_frame_idx]
     #     seconds = self.encoder.to_seconds(n_frames)
     #     return key, seconds
-
