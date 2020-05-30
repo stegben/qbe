@@ -48,7 +48,7 @@ class LibriSpeechWithAlignment:
             key = self.gen_key(voice_path)
             self.key2path[key] = voice_path
 
-        self._keys = sorted(list(set().intersection(self.key2path, self.key2alignments)))
+        self._keys = sorted(list(set(self.key2path) & set(self.key2alignments)))
 
     @property
     def keys(self):
