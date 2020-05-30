@@ -27,8 +27,8 @@ if __name__ == '__main__':
     alignment_directory = os.environ['QBE_LIBRIALIGNED_PATH']
 
     audio_provider = LibriSpeechWithAlignment(
-        os.path.join(audio_directory, 'train-clean-100', '**/*.flac'),
-        os.path.join(alignment_directory, 'train-clean-100', '**/*.txt'),
+        os.path.join(audio_directory, 'train-clean-100', '*/*/*.flac'),
+        os.path.join(alignment_directory, 'train-clean-100', '*/*/*.txt'),
     )
     audio_loader = TorchAudio()
     encoder = MFCC()
