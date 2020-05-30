@@ -27,7 +27,7 @@ if __name__ == '__main__':
     alignment_directory = os.environ['QBE_LIBRIALIGNED_PATH']
 
     audio_provider = LibriSpeechWithAlignment(
-        os.path.join(audio_directory, 'train-clean-100', '1*/**/*.flac'),
+        os.path.join(audio_directory, 'train-clean-100', '**/*.flac'),
         os.path.join(alignment_directory, 'train-clean-100', '**/*.txt'),
     )
     audio_loader = TorchAudio()
@@ -41,9 +41,11 @@ if __name__ == '__main__':
         n_nearest_frames=100,
         offset_merge_threshold=10,
     )
-
+    results = []
+    labels = []
     for _ in range(10000):
-        feature, idxs = data.sample_range(length=1.5)
-        result = index.query(feature)
+        key, start_sec, feature = data.sample_range(length=1.5)
+        labels.append((key, start_sec))
+        results.append(index.query(feature))
 
     import ipdb; ipdb.set_trace()

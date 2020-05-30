@@ -137,4 +137,4 @@ class Data:
 
         start_sec = random.uniform(0., original_length - length)
         end_sec = start_sec + length
-        return self.extract(key, start_sec=start_sec, end_sec=end_sec), start_sec
+        return key, start_sec, self.extract(key, start_sec=start_sec, end_sec=end_sec)
