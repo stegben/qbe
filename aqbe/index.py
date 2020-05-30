@@ -1,6 +1,7 @@
 from collections import Counter, defaultdict
 
 from hnswlib import Index
+from tqdm import tqdm
 
 from .types import AudioFeatureType, IndexQueryResult, FrameIdxType
 
@@ -100,6 +101,6 @@ class SimpleRails:
             total_frames=data.n_frames,
             **kwargs
         )
-        for feature, idx in data.generate():
+        for feature, idx in tqdm(data.generate(), desc='Build index...'):
             index.add(feature, idx)
         return index

@@ -1,8 +1,11 @@
 import abc
 from collections import namedtuple, defaultdict
+from glob import glob
 from pathlib import Path
+import random
 
 import numpy as np
+from tqdm import tqdm
 
 from .types import AlignmentType
 from .utils import RangeLookup
@@ -14,20 +17,16 @@ Position = namedtuple('Position', ['key', 'start', 'end'])
 
 class LibriSpeechWithAlignment:
 
-    def __init__(self, audio_directory, alignment_directory):
-        libri_speech_folder = Path(audio_directory)
-        libri_aligned_folder = Path(alignment_directory)
+    def __init__(self, audio_file_glob, alignment_file_glob):
 
-        self.all_voice_path = list(libri_speech_folder.glob('train-clean-100/*/*/*.flac')) \
-                            + list(libri_speech_folder.glob('train-clean-360/*/*/*.flac'))
-        self.all_aligned_texts_path = list(libri_aligned_folder.glob('train-clean-100/*/*/*.txt')) \
-                                    + list(libri_aligned_folder.glob('train-clean-360/*/*/*.txt'))
+        self.all_voice_path = list(glob(audio_file_glob))
+        self.all_aligned_texts_path = list(glob(alignment_file_glob))
 
         self.key2path = {}
         self.key2alignments = defaultdict(list)
 
         for aligned_texts_path in self.all_aligned_texts_path:
-            with aligned_texts_path.open('r') as f:
+            with open(aligned_texts_path, 'r') as f:
                 for line in f:
                     raw = line.rstrip().split()
                     key = raw[0]
@@ -56,7 +55,7 @@ class LibriSpeechWithAlignment:
         return self._keys
 
     def gen_key(self, path):
-        return path.stem
+        return Path(path).stem
 
     def get_audio_path(self, key):
         return self.key2path[key]
@@ -80,7 +79,7 @@ class Data:
 
         self.encoded_audio_features = []
         self._n_frames = 0
-        for key in self.audio_provider.keys:
+        for key in tqdm(self.audio_provider.keys, desc='read audio data'):
             audio_path = self.audio_provider.get_audio_path(key)
             audio = self.audio_loader.extract_audio(audio_path, start_sec=0, end_sec=None)
             feature = self.encoder.encode(audio)
@@ -119,7 +118,7 @@ class Data:
         return self.encoder.dim
 
     def extract(self, key, start_sec, end_sec=None):
-        path = self.audio_provider.get_path[key]
+        path = self.audio_provider.get_audio_path[key]
         audio = self.audio_loader.extract_audio(path, start_sec=start_sec, end_sec=end_sec)
         return self.encoder.encode(audio)
 
@@ -127,3 +126,15 @@ class Data:
     #     key, n_frames = self.idx2key[start_frame_idx, end_frame_idx]
     #     seconds = self.encoder.to_seconds(n_frames)
     #     return key, seconds
+
+    def sample_range(self, length: float):
+        key = random.choice(self.audio_provider.keys)
+        feature = self.key2feature[key]
+        n_frames = feature.shape[0]
+        original_length = self.encoder.to_seconds(n_frames)
+        if original_length < length:
+            return feature
+
+        start_sec = random.uniform(0., original_length - length)
+        end_sec = start_sec + length
+        return self.extract(key, start_sec=start_sec, end_sec=end_sec), start_sec
