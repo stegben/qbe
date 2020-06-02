@@ -118,7 +118,7 @@ class Data:
         return self.encoder.dim
 
     def extract(self, key, start_sec, end_sec=None):
-        path = self.audio_provider.get_audio_path[key]
+        path = self.audio_provider.get_audio_path(key)
         audio = self.audio_loader.extract_audio(path, start_sec=start_sec, end_sec=end_sec)
         return self.encoder.encode(audio)
 
