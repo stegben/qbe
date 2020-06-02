@@ -44,8 +44,14 @@ if __name__ == '__main__':
     results = []
     labels = []
     for _ in range(10000):
-        key, start_sec, feature = data.sample_range(length=1.5)
+        try:
+            key, start_sec, feature = data.sample_range(length=1.5)
+        except:
+            import ipdb; ipdb.set_trace()
         labels.append((key, start_sec))
-        results.append(index.query(feature))
+        try:
+            results.append(index.query(feature))
+        except:
+            import ipdb; ipdb.set_trace()
 
     import ipdb; ipdb.set_trace()
