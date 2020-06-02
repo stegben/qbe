@@ -122,10 +122,13 @@ class Data:
         audio = self.audio_loader.extract_audio(path, start_sec=start_sec, end_sec=end_sec)
         return self.encoder.encode(audio)
 
-    # def reverse_lookup(self, start_frame_idx, end_frame_idx):
-    #     key, n_frames = self.idx2key[start_frame_idx, end_frame_idx]
-    #     seconds = self.encoder.to_seconds(n_frames)
-    #     return key, seconds
+    def reverse_lookup(self, start_frame_idx, end_frame_idx):
+        points = self.idx2key[start_frame_idx:end_frame_idx]
+        results = []
+        for key, n_frames in points:
+            seconds = self.encoder.to_seconds(n_frames)
+            results.append((key, seconds))
+        return results
 
     def sample_range(self, length: float):
         key = random.choice(self.audio_provider.keys)
