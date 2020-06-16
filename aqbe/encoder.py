@@ -28,15 +28,29 @@ class EncoderBase(abc.ABC):
 
 class MFCC(EncoderBase):
 
-    def __init__(self):
-        self.mfcc = ta.transforms.MFCC(
+    def __init__(
+            self,
             sample_rate=16000,
             n_mfcc=39,
+            win_length=400,
+            hop_length=160,
+            n_fft=400,
+            n_mels=39,
+        ):
+        self.sample_rate = sample_rate
+        self.n_mfcc = n_mfcc
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.n_fft = n_fft
+        self.n_mels = n_mels
+        self.mfcc = ta.transforms.MFCC(
+            sample_rate=self.sample_rate,
+            n_mfcc=self.n_mfcc,
             melkwargs=dict(
-                win_length=400,
-                n_fft=400,
-                hop_length=160,
-                n_mels=39,
+                win_length=self.win_length,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                n_mels=self.n_mels,
             ),
         )
 
@@ -48,10 +62,10 @@ class MFCC(EncoderBase):
 
     @property
     def dim(self):
-        return 39
+        return self.n_mels
 
     def to_seconds(self, n_frames: int):
-        return (n_frames * 160 + 240) / 16000
+        return ((n_frames - 1) * self.hop_length + self.win_length) / self.sample_rate
 
     def to_frames(self, secs: Second) -> int:
-        return int(secs * 16000 // 160)
+        return int(secs * self.sample_rate // self.hop_length)
