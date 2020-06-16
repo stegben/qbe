@@ -82,23 +82,24 @@ class Data:
         for key in tqdm(self.audio_provider.keys, desc='read audio data'):
             audio_path = self.audio_provider.get_audio_path(key)
             audio = self.audio_loader.extract_audio(audio_path, start_sec=0, end_sec=None)
+
+            alignments = self.audio_provider.get_alignments(key)
+            for word, start_sec, end_sec in alignments:
+                end_frames = self.encoder.to_frames(end_sec)
+                if word != '':
+                    self.word2positions[word].append(Position(
+                        key=key,
+                        start=start_sec,
+                        end=end_sec,
+                    ))
+                self.idx2word.add(self._n_frames + end_frames, word)
+                start_sec = end_sec
+
             feature = self.encoder.encode(audio)
             n_frame = feature.shape[0]
             self._n_frames += n_frame
             self.idx2key.add(self._n_frames, key)
             self.key2feature[key] = feature
-
-            alignments = self.audio_provider.get_alignments(key)
-
-            for word, start_sec, end_sec in alignments:
-                start_frames = self.encoder.to_frames(start_sec)
-                end_frames = self.encoder.to_frames(end_sec)
-                self.word2positions[word].append(Position(
-                    key=key,
-                    start=start_frames,
-                    end=end_frames,
-                ))
-                start_sec = end_sec
 
     def generate(self, *_, **__):
         start_idx = 0
@@ -141,3 +142,28 @@ class Data:
         start_sec = random.uniform(0., original_length - length)
         end_sec = start_sec + length
         return key, start_sec, self.extract(key, start_sec=start_sec, end_sec=end_sec)
+
+    def most_frequent_words(self, k):
+        return sorted(
+            self.word2positions,
+            key=lambda word: len(self.word2positions[word]),
+            reverse=True,
+        )[:k]
+
+    def sample_by_word(self, word):
+        key, start, end = random.choice(self.word2positions[word])
+        return self.extract(key, start, end)
+
+    def ground_truths(self, label):
+        return self.word2positions[label]
+
+    def labels(self, start_frame, end_frame):
+        raw = self.idx2word[start_frame:end_frame]
+        result = []
+        for label, _ in raw:
+            if result:
+                if label == result[-1]:
+                    continue
+            result.append(label)
+
+        return result

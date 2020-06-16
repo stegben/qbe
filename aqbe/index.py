@@ -17,6 +17,12 @@ class HoughAccumulations:
         self.counts.update([key])
         self.key2labels[key].append(label)
 
+    # TODO: add slopes one by one is the bottle neck
+    # def add_batch(self, data):
+    #     keys = [self.hash(slope, offset) for slope, offset, _ in data]
+    #     self.counts.update(keys)
+    #     for key, label
+
     def peaks(self, k):
         candidates = self.counts.most_common(k)
         result = []
@@ -36,7 +42,7 @@ class SimpleRails:
             total_frames: int,
             n_nearest_frames: int = 100,
             n_hough_peaks: int = 100,
-            offset_merge_threshold: float = 10.,
+            offset_merge_threshold: float = 100.,
         ):
         self.index = Index(space='l2', dim=dim)
         self.index.init_index(max_elements=total_frames, ef_construction=200, M=16)
