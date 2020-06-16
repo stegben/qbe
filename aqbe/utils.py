@@ -22,7 +22,7 @@ class RangeLookup:
         if isinstance(position, slice):  # slicing
             start = position.start
             stop = position.stop
-            assert stop > start
+            assert stop >= start
 
             start_idx = self._get_idx(start)
             stop_idx = self._get_idx(stop)
