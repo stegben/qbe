@@ -56,8 +56,8 @@ if __name__ == '__main__':
     all_query_word = []
     all_preds = []
     all_score = []
-    query_words = test_data.most_frequent_words(100)[5:]
-    for _ in tqdm(range(100)):
+    query_words = test_data.most_frequent_words(200)[100:]
+    for _ in tqdm(range(10000)):
 
         # select a word
         query_word = random.choice(query_words)
@@ -75,7 +75,7 @@ if __name__ == '__main__':
         for _score, start_frame, end_frame in query_result:
             words = data.labels(start_frame, end_frame)
             preds.append(words)
-        score = match_ratio(query_word, preds, correct_threshold=1./3.)
+        score = match_ratio(query_word, preds, correct_threshold=1./5.)
         all_score.append(score)
         all_preds.append(preds)
 
