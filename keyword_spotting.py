@@ -35,12 +35,12 @@ if __name__ == '__main__':
     encoder = MFCC()
 
     audio_provider = LibriSpeechWithAlignment(
-        os.path.join(audio_directory, 'train-clean-100', '9*/*/*.flac'),
-        os.path.join(alignment_directory, 'train-clean-100', '9*/*/*.txt'),
+        os.path.join(audio_directory, 'train-clean-100', '*/*/*.flac'),
+        os.path.join(alignment_directory, 'train-clean-100', '*/*/*.txt'),
     )
     test_audio_provider = LibriSpeechWithAlignment(
-        os.path.join(audio_directory, 'test-clean', '9*/*/*.flac'),
-        os.path.join(alignment_directory, 'test-clean', '9*/*/*.txt'),
+        os.path.join(audio_directory, 'test-clean', '*/*/*.flac'),
+        os.path.join(alignment_directory, 'test-clean', '*/*/*.txt'),
     )
 
     data = Data(audio_loader, audio_provider, encoder)
