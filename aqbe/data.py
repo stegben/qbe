@@ -25,6 +25,7 @@ class LibriSpeechWithAlignment:
         self.key2path = {}
         self.key2alignments = defaultdict(list)
 
+    def init(self):
         for aligned_texts_path in self.all_aligned_texts_path:
             with open(aligned_texts_path, 'r') as f:
                 for line in f:
@@ -70,6 +71,7 @@ class Data:
     def __init__(self, audio_loader, audio_provider, encoder):
         self.audio_loader = audio_loader
         self.audio_provider = audio_provider
+        self.audio_provider.init()
         self.encoder = encoder
 
         self.idx2key = RangeLookup()
