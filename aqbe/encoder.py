@@ -36,6 +36,7 @@ class MFCC(EncoderBase):
             hop_length=160,
             n_fft=400,
             n_mels=39,
+            cmvn=False,
         ):
         self.sample_rate = sample_rate
         self.n_mfcc = n_mfcc
@@ -43,6 +44,7 @@ class MFCC(EncoderBase):
         self.hop_length = hop_length
         self.n_fft = n_fft
         self.n_mels = n_mels
+        self.cmvn = cmvn
         self.mfcc = ta.transforms.MFCC(
             sample_rate=self.sample_rate,
             n_mfcc=self.n_mfcc,
@@ -58,6 +60,9 @@ class MFCC(EncoderBase):
         audio_tensor = torch.from_numpy(audio)
         feature = self.mfcc(audio_tensor)
         feature.transpose_(0, 1)
+        if self.cmvn:
+            # TODO: unit-norm each channel
+            pass
         return feature.numpy()
 
     @property
@@ -69,3 +74,21 @@ class MFCC(EncoderBase):
 
     def to_frames(self, secs: Second) -> int:
         return int(secs * self.sample_rate // self.hop_length)
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['mfcc']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.mfcc = ta.transforms.MFCC(
+            sample_rate=self.sample_rate,
+            n_mfcc=self.n_mfcc,
+            melkwargs=dict(
+                win_length=self.win_length,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                n_mels=self.n_mels,
+            ),
+        )
