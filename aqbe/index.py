@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from collections import Counter, defaultdict
 
 from hnswlib import Index
@@ -34,6 +36,10 @@ class HoughAccumulations:
         return (int(x), int(y))
 
 
+SAVED_INDEX_NAME = 'index.bin'
+SAVED_BUILD_ARGS_NAME = 'build_args.json'
+
+
 class SimpleRails:
 
     def __init__(
@@ -43,10 +49,23 @@ class SimpleRails:
             n_nearest_frames: int = 100,
             n_hough_peaks: int = 100,
             offset_merge_threshold: float = 100.,
+            hnsw_space='l2',
+            hnsw_ef_construction=200,
+            hnsw_M=16,
         ):
-        self.index = Index(space='l2', dim=dim)
-        self.index.init_index(max_elements=total_frames, ef_construction=200, M=16)
+        ## HNSW
+        self.dim = dim
         self.total_frames = total_frames
+
+        self.hnsw_space = hnsw_space
+        self.hnsw_ef_construction = hnsw_ef_construction
+        self.hnsw_M = hnsw_M
+        self.index = Index(space=hnsw_space, dim=dim)
+        self.index.init_index(
+            max_elements=total_frames,
+            ef_construction=hnsw_ef_construction,
+            M=hnsw_M,
+        )
 
         # hyper parameters
 
@@ -109,4 +128,36 @@ class SimpleRails:
         )
         for feature, idx in tqdm(data.generate(), desc='Build index...'):
             index.add(feature, idx)
+        return index
+
+    def save(self, path):
+        try:
+            path = Path(path)
+            path.mkdir(mode=0o775, parents=True, exist_ok=True)
+            self.index.save_index(str(path / SAVED_INDEX_NAME))
+            build_args = {
+                'dim': self.dim,
+                'total_frames': self.total_frames,
+                'n_nearest_frames': self.n_nearest_frames,
+                'n_hough_peaks': self.n_hough_peaks,
+                'offset_merge_threshold': self.offset_merge_threshold,
+                'hnsw_space': self.hnsw_space,
+                'hnsw_ef_construction': self.hnsw_ef_construction,
+                'hnsw_M': self.hnsw_M,
+            }
+            with open(str(path / SAVED_BUILD_ARGS_NAME), 'w') as fw:
+                json.dump(build_args, fw)
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+    @classmethod
+    def load(cls, path):
+        path = Path(path)
+        with open(str(path / SAVED_BUILD_ARGS_NAME), 'r') as f:
+            build_args = json.load(f)
+
+        index = cls(**build_args)
+        index.index.load_index(str(path / SAVED_INDEX_NAME))
         return index
