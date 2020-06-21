@@ -17,10 +17,10 @@ Position = namedtuple('Position', ['key', 'start', 'end'])
 
 class LibriSpeechWithAlignment:
 
-    def __init__(self, audio_file_glob, alignment_file_glob):
+    def __init__(self, audio_file_pattern, alignment_file_pattern):
 
-        self.all_voice_path = list(glob(audio_file_glob))
-        self.all_aligned_texts_path = list(glob(alignment_file_glob))
+        self.all_voice_path = list(glob(audio_file_pattern))
+        self.all_aligned_texts_path = list(glob(alignment_file_pattern))
 
         self.key2path = {}
         self.key2alignments = defaultdict(list)
@@ -77,7 +77,6 @@ class Data:
         self.key2feature = {}
         self.word2positions = defaultdict(list)
 
-        self.encoded_audio_features = []
         self._n_frames = 0
         for key in tqdm(self.audio_provider.keys, desc='read audio data'):
             audio_path = self.audio_provider.get_audio_path(key)
