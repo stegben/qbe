@@ -46,12 +46,15 @@ if __name__ == '__main__':
     data = Data(audio_loader, audio_provider, encoder)
     test_data = Data(audio_loader, test_audio_provider, encoder)
 
-    index = SimpleRails.build_from_data(
-        data,
+    index = SimpleRails(
+        dim=data.feature_dims,
+        total_frames=data.n_frames,
         n_hough_peaks=100,
         n_nearest_frames=100,
         offset_merge_threshold=10,
     )
+    for feature, idx in tqdm(data.generate(), desc='Build index...'):
+        index.add(feature, idx)
     results = []
     all_query_word = []
     all_preds = []

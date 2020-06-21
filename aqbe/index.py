@@ -119,17 +119,6 @@ class SimpleRails:
             result.append((cur_count, cur_left, cur_right))  # score, start_frame, end_frame
         return result
 
-    @classmethod
-    def build_from_data(cls, data, **kwargs):
-        index = cls(
-            dim=data.feature_dims,
-            total_frames=data.n_frames,
-            **kwargs
-        )
-        for feature, idx in tqdm(data.generate(), desc='Build index...'):
-            index.add(feature, idx)
-        return index
-
     def save(self, path):
         try:
             path = Path(path)
