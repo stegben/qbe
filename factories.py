@@ -161,21 +161,6 @@ def attach_build_args(parser):
         required=True,
     )
     parser.add_argument(
-        '--sr_n_hough_peaks',
-        type=int,
-        default=100,
-    )
-    parser.add_argument(
-        '--sr_n_nearest_frames',
-        type=int,
-        default=100,
-    )
-    parser.add_argument(
-        '--sr_offset_merge_threshold',
-        type=int,
-        default=10,
-    )
-    parser.add_argument(
         '--sr_hnsw_space',
         type=str,
         default='l2',
