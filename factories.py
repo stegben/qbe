@@ -146,7 +146,7 @@ def attach_build_args(parser):
     )
     parser.add_argument(
         '--mfcc_cmvn',
-        type=bool,
+        action='store_true',
         default=False,
     )
 
