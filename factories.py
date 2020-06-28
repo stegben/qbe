@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+import pickle as pkl
 
 from dotenv import load_dotenv
 
@@ -45,6 +47,8 @@ AUDIO_PROVIDERS = {
         os.path.join(LIBRIALIGNED_PATH, 'train-clean-100', '9*/*/*.txt'),
     ),
 }
+REGISTRY_DIR = os.environ.get('QBE_REGISTRY_DIR', '/tmp')
+
 
 class ClsSelector:
 
@@ -97,6 +101,20 @@ def build_index(args, data):
     index = index_factory.create(key, **kwargs)
 
     return index
+
+
+def prepare_data_index_for_query(args):
+    loaded_dir_name = args.load_from
+    loaded_dir = os.path.join(REGISTRY_DIR, loaded_dir_name)
+    loaded_dir = Path(loaded_dir)
+
+    with open(str(loaded_dir / 'data.pkl'), 'rb') as f:
+        data = pkl.load(f)
+
+    index = SimpleRails.load(str(loaded_dir / 'index'))
+    kwargs = {key[3:]: value for key, value in vars(args).items() if key[:3] == 'sr_'}
+    index.set_query_params(**kwargs)
+    return data, index
 
 
 def attach_build_args(parser):
@@ -184,7 +202,33 @@ def attach_build_args(parser):
     return parser
 
 
-
+def attach_query_args(parser):
+    parser.add_argument(
+        '--n_queries',
+        type=int,
+        default=100,
+    )
+    parser.add_argument(
+        '--sr_ef',
+        type=int,
+        default=200,
+    )
+    parser.add_argument(
+        '--sr_n_nearest_frames',
+        type=int,
+        default=100,
+    )
+    parser.add_argument(
+        '--sr_n_hough_peaks',
+        type=int,
+        default=100,
+    )
+    parser.add_argument(
+        '--sr_offset_merge_threshold',
+        type=int,
+        default=10,
+    )
+    return parser
 
 
 def attach_save_args(parser):
@@ -201,5 +245,6 @@ def attach_load_args(parser):
     parser.add_argument(
         '--load_from',
         type=str,
+        required=True,
     )
     return parser

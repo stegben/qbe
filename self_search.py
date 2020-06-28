@@ -1,67 +1,34 @@
 import argparse
 import os
+from pathlib import Path
+import pickle as pkl
 
-from dotenv import load_dotenv
 import numpy as np
 from tqdm import tqdm
 
-from aqbe.data import LibriSpeechWithAlignment, Data
-from aqbe.audio_loader import TorchAudio
-from aqbe.encoder import MFCC
-from aqbe.index import SimpleRails
 from aqbe.eval import overlap_ratio
+
+from factories import attach_load_args, attach_query_args, prepare_data_index_for_query
 
 
 def self_search_argparse():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-d',
-        '--data',
-        type=str,
-        default=''
-    )
-    parser.add_argument
+    attach_query_args(parser)
+    attach_load_args(parser)
     return parser
 
 
 if __name__ == '__main__':
-    load_dotenv()
-
-    audio_directory = os.environ['QBE_LIBRISPEECH_PATH']
-    alignment_directory = os.environ['QBE_LIBRIALIGNED_PATH']
-
-    audio_provider = LibriSpeechWithAlignment(
-        os.path.join(audio_directory, 'train-clean-100', '*/*/*.flac'),
-        os.path.join(alignment_directory, 'train-clean-100', '*/*/*.txt'),
-    )
-    audio_loader = TorchAudio()
-    encoder = MFCC()
-
-    data = Data(audio_loader, audio_provider, encoder)
-
-    index = SimpleRails(
-        dim=data.feature_dims,
-        total_frames=data.n_frames,
-        n_hough_peaks=100,
-        n_nearest_frames=100,
-        offset_merge_threshold=10,
-    )
-    for feature, idx in tqdm(data.generate(), desc='Build index...'):
-        index.add(feature, idx)
+    args = self_search_argparse().parse_args()
+    data, index = prepare_data_index_for_query(args)
 
     results = []
     labels = []
     correct = []
     query_length = 1.5
-    for _ in tqdm(range(100)):
-        try:
-            key, start_sec, feature = data.sample_range(length=query_length)
-        except:
-            continue
-        try:
-            score, start_frame_idx, end_frame_idx = index.query(feature)[0]
-        except:
-            continue
+    for _ in tqdm(range(args.n_queries)):
+        key, start_sec, feature = data.sample_range(length=query_length)
+        score, start_frame_idx, end_frame_idx = index.query(feature)[0]
         labels.append((key, start_sec))
         results.append((score, start_frame_idx, end_frame_idx))
 
@@ -83,4 +50,3 @@ if __name__ == '__main__':
             else:
                 correct.append(0)
     print(f'score: {np.mean(correct)}')
-    import ipdb; ipdb.set_trace()

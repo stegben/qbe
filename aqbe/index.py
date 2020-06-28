@@ -70,15 +70,20 @@ class SimpleRails:
         assert idxs.max() < self.total_frames
         self.index.add_items(feature, idxs)
 
-    def query(
+    def set_query_params(
             self,
-            feature: AudioFeatureType,
+            ef=200,
             n_nearest_frames=100,
             n_hough_peaks=100,
-            ef=200,
-        ) -> IndexQueryResult:
+            offset_merge_threshold=10,
+        ):
         self.index.set_ef(ef)
-        knn_points, _distances = self.index.knn_query(feature, k=n_nearest_frames)
+        self.n_nearest_frames = n_nearest_frames
+        self.n_hough_peaks = n_hough_peaks
+        self.offset_merge_threshold = offset_merge_threshold
+
+    def query(self, feature: AudioFeatureType) -> IndexQueryResult:
+        knn_points, _distances = self.index.knn_query(feature, k=self.n_nearest_frames)
 
         accumulations = HoughAccumulations()
         for m_idx, n_idxs in enumerate(list(knn_points)):
@@ -89,7 +94,7 @@ class SimpleRails:
                     offset = slope * -m_idx + n_idx
                     accumulations.add(slope, offset, n_idx)
 
-        candidates = accumulations.peaks(n_hough_peaks)
+        candidates = accumulations.peaks(self.n_hough_peaks)
 
         merged = set()
         result = []
@@ -99,11 +104,11 @@ class SimpleRails:
             cur_left = min(points)
             cur_right = max(points)
             cur_count = count
-            for idx2 in range(idx + 1, n_hough_peaks):
+            for idx2 in range(idx + 1, self.n_hough_peaks):
                 if idx2 in merged:
                     continue
                 (_, offset_2), count_2, points_2 = candidates[idx2]
-                if abs((offset - offset_2)) < offset_merge_threshold:
+                if abs((offset - offset_2)) < self.offset_merge_threshold:
                     cur_count += count_2
                     cur_left = min(cur_left, min(points_2))
                     cur_right = max(cur_right, max(points_2))
