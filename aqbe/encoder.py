@@ -61,8 +61,9 @@ class MFCC(EncoderBase):
         feature = self.mfcc(audio_tensor)
         feature.transpose_(0, 1)
         if self.cmvn:
-            # TODO: unit-norm each channel
-            pass
+            mean = feature.mean(1)
+            std = feature.std(1)
+            feature = ((feature.T - mean) / std).T
         return feature.numpy()
 
     @property

@@ -144,6 +144,11 @@ def attach_build_args(parser):
         type=int,
         default=160,
     )
+    parser.add_argument(
+        '--mfcc_cmvn',
+        type=bool,
+        default=False,
+    )
 
     # Audio Loaders
     parser.add_argument(
@@ -177,6 +182,9 @@ def attach_build_args(parser):
         default=16,
     )
     return parser
+
+
+
 
 
 def attach_save_args(parser):
