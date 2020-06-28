@@ -117,6 +117,15 @@ def prepare_data_index_for_query(args):
     return data, index
 
 
+def prepare_test_data(data, args):
+    audio_provider = AUDIO_PROVIDERS[args.test_data]
+    return Data(
+        data.audio_loader,
+        audio_provider,
+        data.encoder,
+    )
+
+
 def attach_build_args(parser):
     parser.add_argument(
         '--data',
@@ -208,6 +217,13 @@ def attach_query_args(parser):
         type=int,
         default=100,
     )
+    parser.add_argument(
+        '--test_data',
+        type=str,
+        choices=AUDIO_PROVIDERS.keys(),
+    )
+
+    # SimpleRAILS query params
     parser.add_argument(
         '--sr_ef',
         type=int,

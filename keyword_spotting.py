@@ -2,65 +2,36 @@ import argparse
 import os
 import random
 
-from dotenv import load_dotenv
 import numpy as np
 from tqdm import tqdm
 
-from aqbe.data import LibriSpeechWithAlignment, Data
-from aqbe.audio_loader import TorchAudio
-from aqbe.encoder import MFCC
-from aqbe.index import SimpleRails
 from aqbe.eval import match_ratio
+from factories import (
+    attach_load_args,
+    attach_query_args,
+    prepare_data_index_for_query,
+    prepare_test_data,
+)
 
 
-def self_search_argparse():
+def keyword_spotting_argparse():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-d',
-        '--data',
-        type=str,
-        default=''
-    )
-    parser.add_argument
+    attach_load_args(parser)
+    attach_query_args(parser)
     return parser
 
 
 if __name__ == '__main__':
-    load_dotenv()
+    args = keyword_spotting_argparse().parse_args()
+    data, index = prepare_data_index_for_query(args)
+    test_data = prepare_test_data(data, args)
 
-    audio_directory = os.environ['QBE_LIBRISPEECH_PATH']
-    alignment_directory = os.environ['QBE_LIBRIALIGNED_PATH']
-
-    audio_loader = TorchAudio()
-    encoder = MFCC()
-
-    audio_provider = LibriSpeechWithAlignment(
-        os.path.join(audio_directory, 'train-clean-100', '*/*/*.flac'),
-        os.path.join(alignment_directory, 'train-clean-100', '*/*/*.txt'),
-    )
-    test_audio_provider = LibriSpeechWithAlignment(
-        os.path.join(audio_directory, 'test-clean', '*/*/*.flac'),
-        os.path.join(alignment_directory, 'test-clean', '*/*/*.txt'),
-    )
-
-    data = Data(audio_loader, audio_provider, encoder)
-    test_data = Data(audio_loader, test_audio_provider, encoder)
-
-    index = SimpleRails(
-        dim=data.feature_dims,
-        total_frames=data.n_frames,
-        n_hough_peaks=100,
-        n_nearest_frames=100,
-        offset_merge_threshold=10,
-    )
-    for feature, idx in tqdm(data.generate(), desc='Build index...'):
-        index.add(feature, idx)
     results = []
     all_query_word = []
     all_preds = []
     all_score = []
     query_words = test_data.most_frequent_words(200)[100:]
-    for _ in tqdm(range(10000)):
+    for _ in tqdm(range(args.n_queries)):
 
         # select a word
         query_word = random.choice(query_words)
